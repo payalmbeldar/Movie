@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const scrapeAndStoreData = require('./function.js');
-const jwt = require('jsonwebtoken'); // Add this line
+const jwt = require('jsonwebtoken');
 
 
 const app = express();
@@ -21,13 +21,10 @@ const movieSchema = new mongoose.Schema({
 
 const Movie = mongoose.model('Moviess', movieSchema);
 
-mongoose.connect('mongodb://localhost:27017/moviesDB', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+mongoose.connect('mongodb://localhost:27017/moviesDB', { useNewUrlParser: true,useUnifiedTopology: true})
     .then(() => {
         console.log('Connected to MongoDB.');
-        //scrapeAndStoreData()  // uncoment when u want to stored data
+        scrapeAndStoreData()
     })
     .catch((error) => console.error('Error connecting to MongoDB:', error));
 
@@ -38,11 +35,10 @@ mongoose.connect('mongodb://localhost:27017/moviesDB', {
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized: Missing token' });
         }
-    
         try {
             const decoded = jwt.verify(token.split(' ')[1], 'secretkey');
             req.user = decoded.user;
-            next(); // Continue to the next middleware function
+            next();
         } catch (error) {
             return res.status(403).json({ error: 'Forbidden: Invalid token' });
         }
@@ -50,16 +46,10 @@ mongoose.connect('mongodb://localhost:27017/moviesDB', {
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-
-    // Your authentication logic here (e.g., verify username and password)
-
-    // Dummy user data for demonstration
     const user = {
         id: 1,
         username: 'user1'
     };
-
-    // Assuming authentication is successful, generate JWT token
     jwt.sign({ user }, 'secretkey', { expiresIn: '1h' }, (err, token) => {
         if (err) {
             res.status(500).json({ error: 'Internal Server Error' });
@@ -70,7 +60,7 @@ app.post('/login', (req, res) => {
 });
 
 //1. get movies detais
-app.get('/movies', authenticate, async (req, res) => {
+app.get('/getAllMovies', authenticate, async (req, res) => {
     try {
         const movies = await Movie.find();
         res.status(200).json(movies);
@@ -81,7 +71,7 @@ app.get('/movies', authenticate, async (req, res) => {
 
 
 //2. Get movie details sorted by name, rating, release date, duration
-app.get('/movies/sort/:criteria', authenticate, async (req, res) => {
+app.get('/movies/sortBy/:criteria', authenticate, async (req, res) => {
     try {
         const criteria = req.params.criteria
         const movie = await Movie.find().sort(criteria);
@@ -92,13 +82,13 @@ app.get('/movies/sort/:criteria', authenticate, async (req, res) => {
 })
 
 //Search movies by name and description  -- test
-app.get('/movies/search', authenticate, async (req, res) => {
+app.get('/movies/searchBy', authenticate, async (req, res) => {
     const query = req.query.query;
     try {
         const movies = await Movie.find({
             $or: [
-                { name: { $regex: query, $options: 'i' } }, // Case-insensitive search by name
-                { description: { $regex: query, $options: 'i' } } // Case-insensitive search by description
+                { name: { $regex: query, $options: 'i' } }, 
+                { description: { $regex: query, $options: 'i' } }
             ]
         });
         res.json(movies);
@@ -109,24 +99,8 @@ app.get('/movies/search', authenticate, async (req, res) => {
 });
 
 app.use('/movies', scrapeAndStoreData);
-
 const PORT = process.env.PORT || 3000;
 
-// app.post('/login', (req, res) => {
-//     // Dummy user data for demonstration
-//     const user = {
-//         id: 1,
-//         username: 'user1'
-//     };
-
-//     jwt.sign({ user }, 'secretkey', { expiresIn: '1h' }, (err, token) => {
-//         if (err) {
-//             res.status(500).json({ error: 'Internal Server Error' });
-//         } else {
-//             res.json({ token });
-//         }
-//     });
-// });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
